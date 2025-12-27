@@ -40,11 +40,13 @@ Required permissions: The Snowflake role must have access to `SNOWFLAKE.ACCOUNT_
 
 **Main Page:**
 - **Home.py**: Main dashboard with 4 tabs (Overview, Query Performance, Warehouse Usage, Login Activity)
-  - Overview tab: Key metrics cards + storage usage trend
+  - Overview tab: Key metrics cards + cost overview section + storage usage trend
+    - Displays total queries, success rate, credits used, failed logins
+    - Cost overview showing 7-day credits/costs and projected monthly cost
   - Query Performance tab: Execution statistics, status distribution, top warehouses, slowest queries
   - Warehouse Usage tab: Credit consumption trends, compute vs cloud services breakdown
   - Login Activity tab: Success/failure rates, active users, recent failed login attempts
-  - Sidebar controls for time range selection and manual refresh
+  - Sidebar controls for time range selection, credit cost configuration, and manual refresh
 
 **Additional Pages:**
 - **pages/1_Warehouse_Load.py**: Detailed warehouse utilization monitoring
@@ -59,6 +61,20 @@ Required permissions: The Snowflake role must have access to `SNOWFLAKE.ACCOUNT_
 - **pages/4_Snowpipe_Usage.py**: Snowpipe data ingestion monitoring
   - File load status, ingestion trends, parse efficiency, pipe performance metrics
 
+- **pages/5_Query_Performance.py**: Advanced query performance monitoring
+  - Detailed query execution metrics and performance analysis
+
+- **pages/6_Cost_Tracking.py**: Comprehensive cost tracking and analytics
+  - **Overview**: Total credits/costs, cost breakdown (compute vs cloud services), storage costs
+  - **Daily/Weekly/Monthly Trends**: Credit consumption and cost trends over time
+  - **Cost by Dimension**: Cost analysis by warehouse, user, or database
+  - **Storage Costs**: Detailed storage costs (data, stage, fail-safe) with trends
+  - **Budget Tracking**: Daily/monthly budget monitoring, variance analysis, cost forecasting
+  - **Anomaly Detection**: Statistical anomaly detection for unusual cost spikes/drops
+  - Configurable credit cost and storage pricing
+  - Budget alerts and compliance tracking
+  - 30-day cost forecasting using linear regression
+
 ### Connection Management
 - **utils/snowflake_connector.py**: Handles Snowflake connections using `@st.cache_resource` for connection pooling
   - `get_snowflake_connection()`: Creates and caches a single Snowflake connection across the app
@@ -66,6 +82,8 @@ Required permissions: The Snowflake role must have access to `SNOWFLAKE.ACCOUNT_
 
 ### Data Queries
 - **utils/queries.py**: Pre-defined query functions for Snowflake ACCOUNT_USAGE views
+
+**Basic Monitoring Queries:**
   - `get_query_history(hours)`: Query execution history and performance metrics
   - `get_warehouse_load(hours)`: Warehouse utilization and query counts per hour
   - `get_login_history(hours)`: Authentication events and login attempts
@@ -74,6 +92,19 @@ Required permissions: The Snowflake role must have access to `SNOWFLAKE.ACCOUNT_
   - `get_warehouse_metering(days)`: Credit consumption (compute + cloud services)
   - `get_task_history(hours)`: Scheduled task execution status
   - `get_pipe_usage(hours)`: Snowpipe ingestion statistics from COPY_HISTORY
+  - `get_detailed_query_performance(hours)`: Detailed query metrics with compilation/execution times
+  - `get_query_concurrency(hours)`: Query concurrency analysis by warehouse
+
+**Cost Tracking Queries:**
+  - `get_cost_by_warehouse(days)`: Credit breakdown by warehouse with compute/cloud services split
+  - `get_cost_by_user(days)`: Estimated credit usage by user based on query patterns
+  - `get_cost_by_database(days)`: Credit usage and storage costs by database
+  - `get_storage_costs_detailed(days)`: Detailed storage including data, stage, and fail-safe
+  - `get_daily_credit_consumption(days)`: Daily aggregated credit consumption
+  - `get_weekly_credit_consumption(weeks)`: Weekly credit consumption trends
+  - `get_monthly_credit_consumption(months)`: Monthly credit consumption with averages
+  - `get_cost_anomalies(days, threshold)`: Statistical anomaly detection using Z-scores
+  - `get_warehouse_cost_trends(days)`: Warehouse cost trends with 7-day moving averages
 
 All query functions return pandas DataFrames and handle errors gracefully via the connector's error handling.
 

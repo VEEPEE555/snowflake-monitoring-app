@@ -6,7 +6,8 @@ from utils.queries import (
     get_query_history,
     get_warehouse_metering,
     get_login_history,
-    get_storage_usage
+    get_storage_usage,
+    get_daily_credit_consumption
 )
 
 st.set_page_config(
@@ -25,6 +26,17 @@ time_range = st.sidebar.selectbox(
     options=[1, 6, 12, 24, 48, 72],
     index=3,
     format_func=lambda x: f"Last {x} hours"
+)
+
+# Cost configuration
+st.sidebar.subheader("Cost Settings")
+credit_cost = st.sidebar.number_input(
+    "Cost per Credit ($)",
+    min_value=0.0,
+    max_value=10.0,
+    value=2.0,
+    step=0.1,
+    help="Configure your Snowflake credit cost"
 )
 
 refresh = st.sidebar.button("🔄 Refresh Data")
@@ -73,6 +85,41 @@ with tab1:
             st.metric("Failed Logins", f"{failed_logins:,}")
         else:
             st.metric("Failed Logins", "N/A")
+
+    # Cost metrics row
+    st.markdown("### 💰 Cost Overview")
+    col1, col2, col3, col4 = st.columns(4)
+
+    # Fetch daily cost data
+    daily_cost_data = get_daily_credit_consumption(7)
+
+    with col1:
+        if not daily_cost_data.empty:
+            total_credits_7d = daily_cost_data['TOTAL_CREDITS'].sum()
+            st.metric("Credits (7d)", f"{total_credits_7d:,.2f}")
+        else:
+            st.metric("Credits (7d)", "N/A")
+
+    with col2:
+        if not daily_cost_data.empty:
+            total_cost_7d = total_credits_7d * credit_cost
+            st.metric("Est. Cost (7d)", f"${total_cost_7d:,.2f}")
+        else:
+            st.metric("Est. Cost (7d)", "N/A")
+
+    with col3:
+        if not daily_cost_data.empty:
+            avg_daily_credits = daily_cost_data['TOTAL_CREDITS'].mean()
+            st.metric("Avg Daily Credits", f"{avg_daily_credits:,.2f}")
+        else:
+            st.metric("Avg Daily Credits", "N/A")
+
+    with col4:
+        if not daily_cost_data.empty:
+            projected_monthly = avg_daily_credits * 30 * credit_cost
+            st.metric("Projected Monthly Cost", f"${projected_monthly:,.2f}")
+        else:
+            st.metric("Projected Monthly Cost", "N/A")
 
     # Storage usage chart
     st.subheader("Storage Usage Trend")
