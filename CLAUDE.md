@@ -59,6 +59,13 @@ Required permissions: The Snowflake role must have access to `SNOWFLAKE.ACCOUNT_
 - **pages/4_Snowpipe_Usage.py**: Snowpipe data ingestion monitoring
   - File load status, ingestion trends, parse efficiency, pipe performance metrics
 
+- **pages/5_Compute_Resource_Monitoring.py**: Comprehensive compute resource monitoring
+  - **Credit Consumption**: Hourly credit breakdown, compute vs cloud services, warehouse-level analysis
+  - **Utilization Percentage**: Warehouse capacity utilization, over-utilization alerts, efficiency metrics
+  - **Auto-Suspend/Resume**: Session patterns, duration analysis, idle time tracking
+  - **Queue Depth**: Overload/provisioning/repair queue analysis, wait time metrics
+  - **Load Distribution**: Multi-warehouse query distribution, balance scoring, data scanned metrics
+
 ### Connection Management
 - **utils/snowflake_connector.py**: Handles Snowflake connections using `@st.cache_resource` for connection pooling
   - `get_snowflake_connection()`: Creates and caches a single Snowflake connection across the app
@@ -66,6 +73,8 @@ Required permissions: The Snowflake role must have access to `SNOWFLAKE.ACCOUNT_
 
 ### Data Queries
 - **utils/queries.py**: Pre-defined query functions for Snowflake ACCOUNT_USAGE views
+
+**Basic Monitoring:**
   - `get_query_history(hours)`: Query execution history and performance metrics
   - `get_warehouse_load(hours)`: Warehouse utilization and query counts per hour
   - `get_login_history(hours)`: Authentication events and login attempts
@@ -74,6 +83,18 @@ Required permissions: The Snowflake role must have access to `SNOWFLAKE.ACCOUNT_
   - `get_warehouse_metering(days)`: Credit consumption (compute + cloud services)
   - `get_task_history(hours)`: Scheduled task execution status
   - `get_pipe_usage(hours)`: Snowpipe ingestion statistics from COPY_HISTORY
+
+**Advanced Query Performance:**
+  - `get_detailed_query_performance(hours)`: Detailed execution metrics (compilation, queue times, spillage)
+  - `get_query_concurrency(hours)`: Concurrent query analysis by warehouse
+
+**Compute Resource Monitoring:**
+  - `get_warehouse_credit_breakdown(days)`: Hourly credit consumption with compute/cloud services split
+  - `get_warehouse_utilization(hours)`: Warehouse capacity utilization percentages
+  - `get_warehouse_state_changes(hours)`: Session start/end times for suspend/resume pattern analysis
+  - `get_warehouse_events(hours)`: Load history events with running/queued/blocked metrics
+  - `get_warehouse_queue_depth(hours)`: Query queuing analysis (overload/provisioning/repair)
+  - `get_multi_warehouse_load_distribution(hours)`: Multi-warehouse load balancing metrics
 
 All query functions return pandas DataFrames and handle errors gracefully via the connector's error handling.
 
