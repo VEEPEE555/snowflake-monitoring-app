@@ -84,8 +84,9 @@ with col2:
 # Object access analysis
 st.header("Object Access Analysis")
 
-# Helper function to parse JSON arrays
+# Helper functions for object extraction and visualization
 def parse_json_array(json_str):
+    """Parse JSON array string safely, returning empty list on error."""
     if pd.isna(json_str):
         return []
     try:
@@ -93,58 +94,86 @@ def parse_json_array(json_str):
     except:
         return []
 
-# Extract object information
-def extract_objects(row, column_name):
-    objects = parse_json_array(row[column_name])
-    result = []
-    for obj in objects:
-        if isinstance(obj, dict):
-            # Extract objectName or objectDomain
-            obj_name = obj.get('objectName', obj.get('objectDomain', 'Unknown'))
-            result.append(obj_name)
-    return result
+
+def extract_object_name(obj):
+    """Extract object name from a dictionary, with fallback to domain or 'Unknown'."""
+    if isinstance(obj, dict):
+        return obj.get('objectName', obj.get('objectDomain', 'Unknown'))
+    return 'Unknown'
+
+
+def extract_all_objects_from_column(dataframe, column_name):
+    """
+    Extract all objects from a specified column in the dataframe.
+    Returns a list of object names.
+    """
+    all_objects = []
+    for _, row in dataframe.iterrows():
+        objects = parse_json_array(row[column_name])
+        object_names = [extract_object_name(obj) for obj in objects]
+        all_objects.extend(object_names)
+    return all_objects
+
+
+def create_object_access_chart(objects_list, title, color_scale='Viridis', top_n=20):
+    """
+    Create a bar chart showing the most accessed objects.
+
+    Args:
+        objects_list: List of object names
+        title: Chart title
+        color_scale: Plotly color scale to use
+        top_n: Number of top objects to display
+
+    Returns:
+        Plotly figure or None if no data
+    """
+    if not objects_list:
+        return None
+
+    object_counts = pd.Series(objects_list).value_counts().head(top_n)
+
+    fig = px.bar(
+        x=object_counts.values,
+        y=object_counts.index,
+        orientation='h',
+        labels={'x': 'Access Count', 'y': 'Object'},
+        title=title,
+        color=object_counts.values,
+        color_continuous_scale=color_scale
+    )
+    fig.update_layout(height=600, showlegend=False)
+    return fig
 
 # Create tabs for different object types
 tab1, tab2, tab3 = st.tabs(["Direct Access", "Base Objects", "Modified Objects"])
 
 with tab1:
     st.subheader("Directly Accessed Objects")
-    direct_objects = []
-    for _, row in access_data.iterrows():
-        objects = extract_objects(row, 'DIRECT_OBJECTS_ACCESSED')
-        direct_objects.extend(objects)
+    direct_objects = extract_all_objects_from_column(access_data, 'DIRECT_OBJECTS_ACCESSED')
 
-    if direct_objects:
-        direct_df = pd.Series(direct_objects).value_counts().head(20)
-        fig_direct = px.bar(
-            x=direct_df.values,
-            y=direct_df.index,
-            orientation='h',
-            labels={'x': 'Access Count', 'y': 'Object'},
-            title='Top 20 Directly Accessed Objects'
-        )
-        fig_direct.update_layout(height=600)
+    fig_direct = create_object_access_chart(
+        direct_objects,
+        title='Top 20 Directly Accessed Objects',
+        color_scale='Viridis'
+    )
+
+    if fig_direct:
         st.plotly_chart(fig_direct, use_container_width=True)
     else:
         st.info("No direct object access data available")
 
 with tab2:
     st.subheader("Base Objects Accessed")
-    base_objects = []
-    for _, row in access_data.iterrows():
-        objects = extract_objects(row, 'BASE_OBJECTS_ACCESSED')
-        base_objects.extend(objects)
+    base_objects = extract_all_objects_from_column(access_data, 'BASE_OBJECTS_ACCESSED')
 
-    if base_objects:
-        base_df = pd.Series(base_objects).value_counts().head(20)
-        fig_base = px.bar(
-            x=base_df.values,
-            y=base_df.index,
-            orientation='h',
-            labels={'x': 'Access Count', 'y': 'Object'},
-            title='Top 20 Base Objects Accessed'
-        )
-        fig_base.update_layout(height=600)
+    fig_base = create_object_access_chart(
+        base_objects,
+        title='Top 20 Base Objects Accessed',
+        color_scale='Blues'
+    )
+
+    if fig_base:
         st.plotly_chart(fig_base, use_container_width=True)
     else:
         st.info("No base object access data available")
@@ -156,23 +185,15 @@ with tab3:
     if not modified_data.empty:
         st.write(f"Found {len(modified_data)} queries that modified objects")
 
-        modified_objects = []
-        for _, row in modified_data.iterrows():
-            objects = extract_objects(row, 'OBJECTS_MODIFIED')
-            modified_objects.extend(objects)
+        modified_objects = extract_all_objects_from_column(modified_data, 'OBJECTS_MODIFIED')
 
-        if modified_objects:
-            modified_df = pd.Series(modified_objects).value_counts().head(20)
-            fig_modified = px.bar(
-                x=modified_df.values,
-                y=modified_df.index,
-                orientation='h',
-                labels={'x': 'Modification Count', 'y': 'Object'},
-                title='Top 20 Modified Objects',
-                color=modified_df.values,
-                color_continuous_scale='Reds'
-            )
-            fig_modified.update_layout(height=600)
+        fig_modified = create_object_access_chart(
+            modified_objects,
+            title='Top 20 Modified Objects',
+            color_scale='Reds'
+        )
+
+        if fig_modified:
             st.plotly_chart(fig_modified, use_container_width=True)
 
         # Show recent modifications

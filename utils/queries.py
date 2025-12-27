@@ -171,3 +171,76 @@ def get_pipe_usage(hours: int = 24) -> pd.DataFrame:
     LIMIT 500
     """
     return execute_query(query)
+
+
+def get_detailed_query_performance(hours: int = 24) -> pd.DataFrame:
+    """
+    Fetch detailed query performance metrics including:
+    - Execution time breakdowns (compilation, execution, queue wait times)
+    - Percentile calculations for performance analysis
+    - Concurrency tracking
+    """
+    query = f"""
+    SELECT
+        QUERY_ID,
+        QUERY_TEXT,
+        USER_NAME,
+        ROLE_NAME,
+        WAREHOUSE_NAME,
+        WAREHOUSE_SIZE,
+        EXECUTION_STATUS,
+        START_TIME,
+        END_TIME,
+        -- Time metrics in seconds
+        TOTAL_ELAPSED_TIME / 1000 as TOTAL_ELAPSED_TIME_SECONDS,
+        COMPILATION_TIME / 1000 as COMPILATION_TIME_SECONDS,
+        EXECUTION_TIME / 1000 as EXECUTION_TIME_SECONDS,
+        QUEUED_PROVISIONING_TIME / 1000 as QUEUED_PROVISIONING_TIME_SECONDS,
+        QUEUED_REPAIR_TIME / 1000 as QUEUED_REPAIR_TIME_SECONDS,
+        QUEUED_OVERLOAD_TIME / 1000 as QUEUED_OVERLOAD_TIME_SECONDS,
+        -- Additional performance metrics
+        BYTES_SCANNED,
+        BYTES_WRITTEN,
+        BYTES_SPILLED_TO_LOCAL_STORAGE,
+        BYTES_SPILLED_TO_REMOTE_STORAGE,
+        ROWS_PRODUCED,
+        ROWS_INSERTED,
+        ROWS_UPDATED,
+        ROWS_DELETED,
+        PARTITIONS_SCANNED,
+        PARTITIONS_TOTAL,
+        -- Query characteristics
+        QUERY_TYPE,
+        QUERY_TAG,
+        -- Resource usage
+        CREDITS_USED_CLOUD_SERVICES,
+        -- Error tracking
+        ERROR_CODE,
+        ERROR_MESSAGE
+    FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+    WHERE START_TIME >= DATEADD(hour, -{hours}, CURRENT_TIMESTAMP())
+    AND EXECUTION_STATUS IN ('SUCCESS', 'FAILED', 'INCIDENT')
+    ORDER BY START_TIME DESC
+    LIMIT 5000
+    """
+    return execute_query(query)
+
+
+def get_query_concurrency(hours: int = 24) -> pd.DataFrame:
+    """
+    Fetch query concurrency data by analyzing overlapping query execution times.
+    """
+    query = f"""
+    SELECT
+        DATE_TRUNC('minute', START_TIME) as TIME_BUCKET,
+        WAREHOUSE_NAME,
+        COUNT(DISTINCT QUERY_ID) as CONCURRENT_QUERIES,
+        AVG(EXECUTION_TIME / 1000) as AVG_EXECUTION_TIME_SECONDS
+    FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+    WHERE START_TIME >= DATEADD(hour, -{hours}, CURRENT_TIMESTAMP())
+    AND WAREHOUSE_NAME IS NOT NULL
+    AND EXECUTION_STATUS = 'SUCCESS'
+    GROUP BY DATE_TRUNC('minute', START_TIME), WAREHOUSE_NAME
+    ORDER BY TIME_BUCKET DESC
+    """
+    return execute_query(query)
